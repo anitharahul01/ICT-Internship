@@ -6,7 +6,7 @@ import os
 
 app = Flask(__name__)
 
-# Load YOUR trained model
+# Load
 print("🔄 Loading model...")
 model = joblib.load("course_success_model.pkl")
 scaler = joblib.load("scaler.pkl")
@@ -29,10 +29,10 @@ def index():
             price = request.form["price"]
             category = request.form["category"]
 
-            # Create features EXACTLY like EDA + model.py
+            # Create features
             is_free = 1 if price == "Free" else 0
 
-            # Category encoding (MUST match your EDA LabelEncoder)
+            # Category encoding
             category_map = {
                 "General": 0,
                 "Generative AI": 1,
@@ -58,38 +58,68 @@ def index():
                     "duration_per_lesson": [duration / (lessons + 1)],
                     "rating_enroll_ratio": [rating * np.log1p(enroll_estimate)],
                 }
-            )[
-                model_features
-            ]  # Exact feature order
+            )[model_features]
 
-            # Predict
+            # Predict probability
             input_scaled = scaler.transform(input_data)
-            pred = model.predict(input_scaled)[0]
-            prob = model.predict_proba(input_scaled)[0][1]
+            prob = model.predict_proba(input_scaled)[0][
+                1
+            ]  # Probability of SUCCESS (class 1)
 
-            prediction = "🎉 HIGH SUCCESS" if pred == 1 else "⚠️ LOW SUCCESS"
-            probability = f"{prob:.1%} success chance"
-
-            # GenAI Advisor
-            success_tips = [
-                "✅ Make it FREE - 2x success rate",
-                "✅ Target 1-3 hour duration (sweet spot)",
-                "✅ Aim for General/Data Science category",
-                "✅ Create 10-20 lessons with quizzes",
-                "✅ Optimize title with trending keywords",
-            ]
-
-            if pred == 0:
-                ai_advice = "🚀 QUICK WINS TO BOOST SUCCESS:\n\n" + "\n".join(
-                    success_tips[:4]
-                )
+            # ✅ NEW: 3-TIER CLASSIFICATION (>0.85 = High, >0.65 = Medium, <0.65 = Low)
+            if prob >= 0.85:
+                prediction = "🎉 HIGH SUCCESS"
+                level = "success-glow bg-success bg-opacity-10"
+            elif prob >= 0.65:
+                prediction = "⚡ MEDIUM SUCCESS"
+                level = "info-glow bg-info bg-opacity-10"
             else:
-                ai_advice = "🎯 EXCELLENT! To MAXIMIZE:\n\n" + "\n".join(
-                    success_tips[2:]
-                )
+                prediction = "⚠️ LOW SUCCESS"
+                level = "warning-glow bg-warning bg-opacity-10"
+
+            probability = f"{prob:.1%} success probability"
+
+            # 🎯 ENHANCED AI ADVISOR (3 levels)
+            if "HIGH" in prediction:
+                ai_advice = """🎯 EXCELLENT COURSE! 🚀
+
+✅ You're in TOP 15% of courses!
+
+💎 TO DOMINATE MARKET:
+• Add certificates/badges
+• Live Q&A sessions
+• Video testimonials
+• Partner promotions
+
+🎖️ Success Score: ELITE"""
+
+            elif "MEDIUM" in prediction:
+                ai_advice = """⚡ GOOD COURSE - MEDIUM POTENTIAL!
+
+🔥 QUICK WINS (Boost to HIGH):
+• Make FREE (if paid)
+• Shorten to 1-3 hours
+• Add 2-3 interactive quizzes
+• Optimize thumbnail/title
+
+🎯 Target: 85%+ success"""
+
+            else:  # LOW
+                ai_advice = """⚠️ LOW SUCCESS - NEEDS WORK!
+
+🚀 CRITICAL FIXES:
+• Make FREE (98% top courses)
+• 1-3 hour duration only
+• General/Data Science category
+• 12-20 lessons max
+• Rating target: 4.5+
+
+📈 Follow = 3X success boost"""
 
         except Exception as e:
             prediction = f"❌ Error: {str(e)}"
+            probability = None
+            ai_advice = None
 
     return render_template(
         "index.html", prediction=prediction, probability=probability, advice=ai_advice
@@ -97,14 +127,7 @@ def index():
 
 
 if __name__ == "__main__":
-    # Development only
-    app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
-else:
-    # Production (gunicorn)
-    application = app
-
-
-if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
     print("🚀 Launching Course Success Predictor")
-    print("🌐 Visit: http://localhost:5000")
-    app.run(debug=True, port=5000)
+    print(f"🌐 Visit: http://localhost:{port}")
+    app.run(debug=True, host="0.0.0.0", port=port)
