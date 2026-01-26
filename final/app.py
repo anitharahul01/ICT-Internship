@@ -97,6 +97,14 @@ def index():
 
 
 if __name__ == "__main__":
+    # Development only
+    app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+else:
+    # Production (gunicorn)
+    application = app
+
+
+if __name__ == "__main__":
     print("🚀 Launching Course Success Predictor")
     print("🌐 Visit: http://localhost:5000")
     app.run(debug=True, port=5000)
